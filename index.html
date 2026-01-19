@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weather + AQI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Poppins", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      background: linear-gradient(135deg, #89f7fe, #66a6ff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .app {
+      text-align: center;
+      background: rgba(255,255,255,0.25);
+      backdrop-filter: blur(18px);
+      padding: 30px 40px;
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+      color: #003049;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-weight: 600;
+    }
+
+    input {
+      padding: 14px 18px;
+      border-radius: 16px;
+      border: none;
+      width: 240px;
+      outline: none;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 14px 18px;
+      border-radius: 16px;
+      border: none;
+      background: #003049;
+      color: white;
+      cursor: pointer;
+      margin-left: 8px;
+      font-size: 16px;
+    }
+
+    .card {
+      margin-top: 25px;
+      padding: 20px 30px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.4);
+      animation: fadeUp 0.6s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .temp {
+      font-size: 38px;
+      font-weight: 600;
+    }
+
+    .aqi {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 12px;
+      color: white;
+    }
+
+    .aqi-1 { background: #2ecc71; }
+    .aqi-2 { background: #f1c40f; color: #000; }
+    .aqi-3 { background: #e67e22; }
+    .aqi-4 { background: #e74c3c; }
+    .aqi-5 { background: #8e44ad; }
+
+    .error {
+      margin-top: 10px;
+      color: #e63946;
+    }
+
+    /* ☁️ Cute Cloud */
+    #cloud {
+      position: fixed;
+      width: 90px;
+      height: 55px;
+      background: white;
+      border-radius: 50px;
+      box-shadow: -20px 10px 0 white, 20px 10px 0 white;
+      pointer-events: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+      100% { transform: translateY(0); }
+    }
+
+    .eye {
+      width: 12px;
+      height: 12px;
+      background: black;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ☁️ Cloud -->
+<div id="cloud">
+  <div class="eye"></div>
+  <div class="eye"></div>
+</div>
+
+<div class="app">
+  <h1>Weather & AQI</h1>
+
+  <input id="city" placeholder="Enter city" />
+  <button onclick="fetchData()">Search</button>
+
+  <div id="result"></div>
+  <div id="error" class="error"></div>
+</div>
+
+<script>
+  const API_KEY = "cb1642b4588f336a75f47cc1c01feb88";
+  const BASE_URL = "https://api.openweathermap.org/data/2.5";
+
+  const cloud = document.getElementById("cloud");
+  const eyes = document.querySelectorAll(".eye");
+
+  let cloudX = window.innerWidth / 2;
+  let cloudY = window.innerHeight / 2;
+
+  document.addEventListener("mousemove", e => {
+    // Smooth chasing
+    cloudX += (e.clientX - cloudX) * 0.08;
+    cloudY += (e.clientY - cloudY) * 0.08;
+    cloud.style.left = cloudX + "px";
+    cloud.style.top = cloudY + "px";
+
+    // Eye tracking
+    eyes.forEach(eye => {
+      const rect = eye.getBoundingClientRect();
+      const dx = e.clientX - (rect.left + rect.width / 2);
+      const dy = e.clientY - (rect.top + rect.height / 2);
+      const angle = Math.atan2(dy, dx);
+      eye.style.transform = `translate(${Math.cos(angle)*3}px, ${Math.sin(angle)*3}px)`;
+    });
+  });
+
+  async function fetchData() {
+    const city = document.getElementById("city").value;
+    const result = document.getElementById("result");
+    const error = document.getElementById("error");
+
+    result.innerHTML = "";
+    error.innerText = "";
+
+    try {
+      const wRes = await fetch(`${BASE_URL}/weather?q=${city}&units=metric&appid=${API_KEY}`);
+      if (!wRes.ok) throw new Error("City not found");
+
+      const weather = await wRes.json();
+      const { lat, lon } = weather.coord;
+
+      const aqiRes = await fetch(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`);
+      const aqiData = await aqiRes.json();
+      const aqi = aqiData.list[0].main.aqi;
+
+      result.innerHTML = `
+        <div class="card">
+          <h2>${weather.name}</h2>
+          <div class="temp">${weather.main.temp}°C</div>
+          <p>${weather.weather[0].description}</p>
+          <div class="aqi aqi-${aqi}">
+            AQI ${aqi}
+          </div>
+        </div>
+      `;
+    } catch (err) {
+      error.innerText = err.message;
+    }
+  }
+</script>
+
+</body>
+</html>
